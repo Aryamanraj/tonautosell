@@ -1,0 +1,38 @@
+{
+  "name": "tonautoseller",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "nodemon src/auto-seller.ts",
+    "start": "ts-node src/auto-seller.ts"
+  },
+  "keywords": [],
+  "author": "@hiruyaken",
+  "license": "ISC",
+  "dependencies": {
+    "@dedust/sdk": "^0.8.7",
+    "@ton/core": "^0.56.2",
+    "@ton/crypto": "^3.2.0",
+    "@ton/ton": "^15.3.1",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "axios": "^1.6.7",
+    "bs58": "^5.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "ioredis": "^5.3.2",
+    "prompt-sync": "^4.2.0",
+    "puppeteer": "^22.4.1",
+    "swagger-ui-express": "^5.0.0",
+    "tonweb": "^0.0.66"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/prompt-sync": "^4.2.3",
+    "nodemon": "^3.0.3",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3"
+  }
+}
