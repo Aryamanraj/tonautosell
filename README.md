@@ -23,8 +23,10 @@ cp .env.example .env
 **Required Variables:**
 
 ```env
-# Monitored wallet mnemonic (24 words)
+# Monitored wallet credentials - supply EITHER mnemonic (24 words) OR raw private key (hex)
+# WATCH_WALLET_PRIVATE_KEY takes precedence when both are present
 WATCH_WALLET_MNEMONIC=word1 word2 word3 ... word24
+WATCH_WALLET_PRIVATE_KEY=abcdef123456...
 
 # Jetton contract address to detect
 JETTON_ADDRESS=EQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -77,7 +79,6 @@ yarn start
 
 ```bash
 npm run dev
-# or
 yarn dev
 ```
 
@@ -93,21 +94,12 @@ graph TD
     B -->|No| A
     B -->|Yes| C[Log: Jettons Detected]
     C --> D[Setup DeDust Pool]
-    D --> E[Record Current TON Balance]
     E --> F[Sell ALL Jettons]
     F --> G[Wait 20s for Confirmation]
     G --> H[Check TON Received]
     H --> I{TON > 0?}
-    I -->|No| J[Log: No TON Received]
-   I -->|Yes| K[Keep 1 TON, Compute 80%/20% Split]
-   K --> L[Send to Wallet A - 80%]
-   L --> M[Send to Wallet B - 20%]
     M --> N[Log: Process Complete]
     N --> A
-    J --> A
-```
-
-## 💡 Technical Details
 
 ### Smart Detection
 - Compares current balance vs. previous balance
@@ -171,7 +163,7 @@ graph TD
 ## ⚠️ Important Considerations
 
 ### Security
-- **NEVER** share your mnemonic phrase
+- **NEVER** share your mnemonic phrase or private key
 - Use dedicated wallets for bot operations
 - Test thoroughly on testnet before mainnet
 - Keep your `.env` file secure and excluded from version control
@@ -204,9 +196,6 @@ Edit `src/auto-seller.ts` around line 225:
 
 ```typescript
 // Current: 80% / 20% split
-const toWalletA = (availableAmount * BigInt(80)) / BigInt(100);
-const toWalletB = availableAmount - toWalletA;
-
 // Example: 60% / 40% split
 const toWalletA = (availableAmount * BigInt(60)) / BigInt(100);
 const toWalletB = availableAmount - toWalletA;
@@ -226,21 +215,9 @@ POLL_INTERVAL_MS=10000
 
 ### Adjust Fee Reserve
 
-Edit `src/auto-seller.ts` around line 220:
-
-```typescript
-// Current: reserves 0.1 TON
-const feeReserve = toNano("0.1");
-
-// Example: reserve 0.2 TON
-const feeReserve = toNano("0.2");
-```
-
 ### Change Wait Time After Sale
-
 Edit `src/auto-seller.ts` around line 157:
 
-```typescript
 // Current: waits 20 seconds
 await sleep(20);
 
@@ -252,7 +229,7 @@ await sleep(30);
 
 ### "Missing environment variables"
 **Cause:** Required `.env` variables not set  
-**Solution:** Ensure `WATCH_WALLET_MNEMONIC`, `JETTON_ADDRESS`, `WALLET_A`, and `WALLET_B` are configured
+**Solution:** Ensure `WATCH_WALLET_MNEMONIC` (or `WATCH_WALLET_PRIVATE_KEY`), `JETTON_ADDRESS`, `WALLET_A`, and `WALLET_B` are configured
 
 ### "Insufficient amount to distribute after fees"
 **Cause:** Not enough TON received or wallet balance too low  
@@ -320,8 +297,8 @@ The system provides comprehensive logging:
 
 2. **Environment Variables**
    - Add `.env` to `.gitignore`
-   - Never commit mnemonics to version control
-   - Rotate mnemonics if exposed
+   - Never commit mnemonics or private keys to version control
+   - Rotate credentials immediately if exposed
 
 3. **Testing**
    - Test on TON testnet first
@@ -370,7 +347,7 @@ For issues, questions, or contributions:
 ## ⚡ Quick Start Checklist
 
 - [ ] Copy `.env.example` to `.env`
-- [ ] Add your wallet mnemonic (24 words)
+- [ ] Add your wallet mnemonic (24 words) or private key (hex)
 - [ ] Configure jetton address to monitor
 - [ ] Set destination wallets A and B
 - [ ] Run `npm install` or `yarn install`
