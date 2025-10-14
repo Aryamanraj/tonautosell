@@ -1,5 +1,5 @@
-import { Address, TonClient, WalletContractV4, WalletContractV5R1, internal, toNano, SendMode } from "@ton/ton";
-import { mnemonicToPrivateKey, KeyPair, keyPairFromSecretKey, keyPairFromSeed } from "@ton/crypto";
+import { Address, TonClient, WalletContractV5R1, internal, toNano, SendMode } from "@ton/ton";
+import { mnemonicToPrivateKey, KeyPair } from "@ton/crypto";
 import { setupDeDustSwap } from "./core/index";
 import { getJettonBalance } from "./core/wallet";
 import { JettonRoot, JettonWallet, VaultJetton } from "@dedust/sdk";
@@ -11,7 +11,6 @@ dotenv.config();
 // Environment configuration
 const {
     WATCH_WALLET_MNEMONIC,
-    WATCH_WALLET_PRIVATE_KEY,
     JETTON_ADDRESS,
     WALLET_A,
     WALLET_B,
@@ -20,9 +19,9 @@ const {
     POLL_INTERVAL_MS = "5000"
 } = process.env;
 
-if ((!WATCH_WALLET_MNEMONIC && !WATCH_WALLET_PRIVATE_KEY) || !JETTON_ADDRESS || !WALLET_A || !WALLET_B) {
+if (!WATCH_WALLET_MNEMONIC || !JETTON_ADDRESS || !WALLET_A || !WALLET_B) {
     console.error("❌ Missing environment variables in .env:");
-    console.error("Provide WATCH_WALLET_MNEMONIC or WATCH_WALLET_PRIVATE_KEY, plus JETTON_ADDRESS, WALLET_A, WALLET_B");
+    console.error("Provide WATCH_WALLET_MNEMONIC plus JETTON_ADDRESS, WALLET_A, WALLET_B");
     process.exit(1);
 }
 
@@ -49,24 +48,11 @@ class JettonAutoSeller {
         this.pollInterval = parseInt(POLL_INTERVAL_MS!);
     }
 
-    async initialize() {
+        async initialize() {
         try {
-            // Create wallet credentials from mnemonic or raw private key
-            if (WATCH_WALLET_PRIVATE_KEY) {
-                const normalized = WATCH_WALLET_PRIVATE_KEY.trim().replace(/^0x/i, "");
-                const keyBytes = Buffer.from(normalized, "hex");
-
-                if (keyBytes.length === 64) {
-                    this.keyPair = keyPairFromSecretKey(keyBytes);
-                } else if (keyBytes.length === 32) {
-                    this.keyPair = keyPairFromSeed(keyBytes);
-                } else {
-                    throw new Error("WATCH_WALLET_PRIVATE_KEY must be 32 or 64 bytes (64 or 128 hex characters)");
-                }
-            } else {
-                const mnemonic = WATCH_WALLET_MNEMONIC!.split(' ');
-                this.keyPair = await mnemonicToPrivateKey(mnemonic);
-            }
+            // Create wallet from mnemonic
+            const mnemonic = WATCH_WALLET_MNEMONIC!.split(' ');
+            this.keyPair = await mnemonicToPrivateKey(mnemonic);
 
             this.watchWallet = WalletContractV5R1.create({
                 workchain: 0,
@@ -156,7 +142,7 @@ class JettonAutoSeller {
             console.log("🚀 Starting automatic sale...");
 
             // 1. Setup DeDust
-            const { pool, jettonVault, nativeVault } = await setupDeDustSwap(
+            const { pool, jettonVault } = await setupDeDustSwap(
                 this.tonClient,
                 this.jettonAddress.toString()
             );

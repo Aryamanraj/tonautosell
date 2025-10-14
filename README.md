@@ -23,10 +23,8 @@ cp .env.example .env
 **Required Variables:**
 
 ```env
-# Monitored wallet credentials - supply EITHER mnemonic (24 words) OR raw private key (hex)
-# WATCH_WALLET_PRIVATE_KEY takes precedence when both are present
+# Monitored wallet credentials - provide the 24-word mnemonic for the watch wallet
 WATCH_WALLET_MNEMONIC=word1 word2 word3 ... word24
-WATCH_WALLET_PRIVATE_KEY=abcdef123456...
 
 # Jetton contract address to detect
 JETTON_ADDRESS=EQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -47,6 +45,10 @@ TON_API_KEY=your_api_key_here
 
 # Polling interval in milliseconds (default: 5000)
 POLL_INTERVAL_MS=5000
+
+# Demo script configuration (used by src/demo.ts)
+TESTNET_DEMO_DEST=EQtestnetAddressGoesHere
+DEMO_TRANSFER_AMOUNT=0.001
 ```
 
 ### 2. Install Dependencies
@@ -81,6 +83,18 @@ yarn start
 npm run dev
 yarn dev
 ```
+
+### Quick Demo Transfer (Testnet)
+
+Use the demo script to send a small TON transfer after initializing the wallet with the same credentials:
+
+```bash
+npx tsx src/demo.ts
+# or
+yarn tsx src/demo.ts
+```
+
+Set `TESTNET_DEMO_DEST` (and optionally `DEMO_TRANSFER_AMOUNT`) in `.env` and point `TON_RPC_ENDPOINT` to a testnet endpoint before running.
 
 ### Stop the Bot
 
@@ -163,7 +177,7 @@ graph TD
 ## ⚠️ Important Considerations
 
 ### Security
-- **NEVER** share your mnemonic phrase or private key
+- **NEVER** share your mnemonic phrase
 - Use dedicated wallets for bot operations
 - Test thoroughly on testnet before mainnet
 - Keep your `.env` file secure and excluded from version control
@@ -229,7 +243,7 @@ await sleep(30);
 
 ### "Missing environment variables"
 **Cause:** Required `.env` variables not set  
-**Solution:** Ensure `WATCH_WALLET_MNEMONIC` (or `WATCH_WALLET_PRIVATE_KEY`), `JETTON_ADDRESS`, `WALLET_A`, and `WALLET_B` are configured
+**Solution:** Ensure `WATCH_WALLET_MNEMONIC`, `JETTON_ADDRESS`, `WALLET_A`, and `WALLET_B` are configured
 
 ### "Insufficient amount to distribute after fees"
 **Cause:** Not enough TON received or wallet balance too low  
@@ -297,7 +311,7 @@ The system provides comprehensive logging:
 
 2. **Environment Variables**
    - Add `.env` to `.gitignore`
-   - Never commit mnemonics or private keys to version control
+   - Never commit mnemonics to version control
    - Rotate credentials immediately if exposed
 
 3. **Testing**
@@ -347,7 +361,7 @@ For issues, questions, or contributions:
 ## ⚡ Quick Start Checklist
 
 - [ ] Copy `.env.example` to `.env`
-- [ ] Add your wallet mnemonic (24 words) or private key (hex)
+- [ ] Add your wallet mnemonic (24 words)
 - [ ] Configure jetton address to monitor
 - [ ] Set destination wallets A and B
 - [ ] Run `npm install` or `yarn install`
