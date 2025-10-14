@@ -85,8 +85,8 @@ class JettonAutoSeller {
         console.log("🤖 Auto detector started!");
         console.log(`📍 Monitoring wallet: ${this.watchWallet.address.toString()}`);
         console.log(`🪙 Target token: ${this.jettonAddress.toString()}`);
-        console.log(`💰 Distribution: 70% → ${this.walletA.toString()}`);
-        console.log(`💰 Distribution: 30% → ${this.walletB.toString()}`);
+    console.log(`💰 Distribution: 80% → ${this.walletA.toString()}`);
+    console.log(`💰 Distribution: 20% → ${this.walletB.toString()}`);
         console.log(`⏱️  Interval: ${this.pollInterval}ms`);
         console.log("🔍 Waiting for jettons...");
 
@@ -224,17 +224,19 @@ class JettonAutoSeller {
 
             // Reserve fee for send transactions (0.1 TON total)
             const feeReserve = toNano("0.1");
-            const availableAmount = totalAmount - feeReserve;
+            const retainReserve = toNano("1");
+            const availableAmount = totalAmount - feeReserve - retainReserve;
 
             if (availableAmount <= BigInt(0)) {
-                console.log("⚠️ Insufficient amount to distribute after fees");
+                console.log("⚠️ Insufficient amount to distribute after keeping 1 TON and covering fees");
                 return;
             }
 
             // Calculate distribution
-            const toWalletA = (availableAmount * BigInt(70)) / BigInt(100);
+            const toWalletA = (availableAmount * BigInt(80)) / BigInt(100);
             const toWalletB = availableAmount - toWalletA;
 
+            console.log("🏦 Retaining 1 TON in the watch wallet");
             console.log(`📤 Sending ${Number(toWalletA) / 1e9} TON to Wallet A`);
             console.log(`📤 Sending ${Number(toWalletB) / 1e9} TON to Wallet B`);
 

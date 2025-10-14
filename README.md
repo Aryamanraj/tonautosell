@@ -6,7 +6,7 @@ An automated system that detects when jettons (tokens) are received in a monitor
 
 1. **Continuous Monitoring**: Checks every 5 seconds for new jettons received
 2. **Automatic Selling**: Instantly sells ALL detected jettons on DeDust DEX
-3. **Automatic Distribution**: Distributes received TON (70% to Wallet A, 30% to Wallet B)
+3. **Automatic Distribution**: Leaves 1 TON in the source wallet and sends the remainder (80% to Wallet A, 20% to Wallet B)
 4. **Error Handling**: Robust error handling with detailed logging
 5. **Transaction Batching**: Sends both distributions in a single transaction for efficiency
 
@@ -30,8 +30,8 @@ WATCH_WALLET_MNEMONIC=word1 word2 word3 ... word24
 JETTON_ADDRESS=EQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # Distribution wallets
-WALLET_A=EQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Receives 70%
-WALLET_B=EQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Receives 30%
+WALLET_A=EQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Receives 80%
+WALLET_B=EQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Receives 20%
 ```
 
 **Optional Variables:**
@@ -99,9 +99,9 @@ graph TD
     G --> H[Check TON Received]
     H --> I{TON > 0?}
     I -->|No| J[Log: No TON Received]
-    I -->|Yes| K[Calculate 70%/30% Split]
-    K --> L[Send to Wallet A - 70%]
-    L --> M[Send to Wallet B - 30%]
+   I -->|Yes| K[Keep 1 TON, Compute 80%/20% Split]
+   K --> L[Send to Wallet A - 80%]
+   L --> M[Send to Wallet B - 20%]
     M --> N[Log: Process Complete]
     N --> A
     J --> A
@@ -122,7 +122,7 @@ graph TD
 - Waits for blockchain confirmation before proceeding
 
 ### Safe Distribution
-- Reserves 0.1 TON for transaction fees
+- Reserves 1 TON in the watch wallet plus 0.1 TON for transaction fees
 - Sends both distributions in a single batched transaction
 - Validates amounts before sending
 - Uses non-bounceable addresses for safety
@@ -141,8 +141,8 @@ graph TD
 🤖 Auto detector started!
 📍 Monitoring wallet: EQAbc...123
 🪙 Target token: EQDef...456
-💰 Distribution: 70% → EQGhi...789
-💰 Distribution: 30% → EQJkl...012
+💰 Distribution: 80% → EQGhi...789
+💰 Distribution: 20% → EQJkl...012
 ⏱️  Interval: 5000ms
 🔍 Waiting for jettons...
 
@@ -158,9 +158,10 @@ graph TD
 💸 TON obtained: 1.8 TON
 
 � Starting TON distribution...
-�💰 Distributing 1.8 TON...
-📤 Sending 1.19 TON to Wallet A
-📤 Sending 0.51 TON to Wallet B
+�💰 Distributing 0.7 TON after retaining 1 TON and fees...
+🏦 Retaining 1 TON in the watch wallet
+📤 Sending 0.56 TON to Wallet A
+📤 Sending 0.14 TON to Wallet B
 ✅ Distribution sent!
 ✅ Process completed!
 
@@ -183,7 +184,7 @@ graph TD
 ### Transaction Fees
 - Each operation consumes TON in fees (~0.05-0.15 TON total per cycle)
 - Keep minimum 0.3 TON balance in monitored wallet
-- Bot reserves 0.1 TON from distributions for future fees
+- Bot reserves 1 TON in the watch wallet and 0.1 TON for future fees
 
 ### Timing Considerations
 - 20-second wait after sale ensures blockchain confirmation
@@ -202,12 +203,12 @@ graph TD
 Edit `src/auto-seller.ts` around line 225:
 
 ```typescript
-// Current: 70% / 30% split
-const toWalletA = (availableAmount * BigInt(70)) / BigInt(100);
+// Current: 80% / 20% split
+const toWalletA = (availableAmount * BigInt(80)) / BigInt(100);
 const toWalletB = availableAmount - toWalletA;
 
-// Example: 80% / 20% split
-const toWalletA = (availableAmount * BigInt(80)) / BigInt(100);
+// Example: 60% / 40% split
+const toWalletA = (availableAmount * BigInt(60)) / BigInt(100);
 const toWalletB = availableAmount - toWalletA;
 ```
 
