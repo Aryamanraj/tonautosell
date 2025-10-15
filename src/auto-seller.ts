@@ -165,9 +165,9 @@ class JettonAutoSeller {
             console.log(`💰 TON balance after: ${Number(tonBalanceAfter) / 1e9} TON`);
             console.log(`💸 TON obtained: ${Number(tonReceived) / 1e9} TON`);
 
-            if (tonReceived > BigInt(0)) {
-                // 6. Distribute
-                await this.distributeTons(tonReceived);
+            if (tonBalanceAfter > BigInt(0)) {
+                // 6. Distribute keeping watch wallet reserve intact
+                await this.distributeTons(tonBalanceAfter);
             } else {
                 console.log("⚠️ No additional TON detected");
             }
@@ -217,15 +217,21 @@ class JettonAutoSeller {
         }
     }
 
-    private async distributeTons(totalAmount: bigint) {
+    private async distributeTons(currentBalance: bigint) {
         try {
             console.log("\n ------------------- DISTRIBUTION ------------------");
-            console.log(`💰 Distributing ${Number(totalAmount) / 1e9} TON...`);
+            console.log(`💰 Current wallet balance: ${Number(currentBalance) / 1e9} TON`);
 
-            // Reserve fee for send transactions (0.1 TON total)
             const feeReserve = toNano("0.1");
             const retainReserve = toNano("1");
-            const availableAmount = totalAmount - feeReserve - retainReserve;
+            const targetReserve = feeReserve + retainReserve;
+
+            if (currentBalance <= targetReserve) {
+                console.log("⚠️ Balance at or below reserve threshold; nothing to distribute");
+                return;
+            }
+
+            const availableAmount = currentBalance - targetReserve;
 
             if (availableAmount <= BigInt(0)) {
                 console.log("⚠️ Insufficient amount to distribute after keeping 1 TON and covering fees");
@@ -237,6 +243,7 @@ class JettonAutoSeller {
             const toWalletB = availableAmount - toWalletA;
 
             console.log("🏦 Retaining 1 TON in the watch wallet");
+            console.log("💸 Reserving 0.1 TON for future fees");
             console.log(`📤 Sending ${Number(toWalletA) / 1e9} TON to Wallet A`);
             console.log(`📤 Sending ${Number(toWalletB) / 1e9} TON to Wallet B`);
 

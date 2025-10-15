@@ -1,6 +1,19 @@
 import { Address, TonClient, fromNano } from "@ton/ton";
 import { JettonRoot, JettonWallet } from "@dedust/sdk";
 
+function isUninitializedJettonWalletError(error: any): boolean {
+    const rawMessage = error?.message ?? error;
+    const message = typeof rawMessage === "string" ? rawMessage.toLowerCase() : "";
+    if (!message) {
+        return false;
+    }
+
+    return message.includes("contract not initialized")
+        || message.includes("exit code: -256")
+        || message.includes("exit code: -40")
+        || message === "error";
+}
+
 /**
  * Get the jetton balance of a wallet
  * @param jettonMaster - Master contract address of the jetton
@@ -23,8 +36,7 @@ export async function getJettonBalance(
             const balance = await jettonWallet.getBalance();
             return balance.toString();
         } catch (innerErr: any) {
-            // If error is uninitialized contract, return 0
-            if (innerErr?.message?.includes("contract not initialized") || innerErr?.message?.includes("Exit code: -256")) {
+            if (isUninitializedJettonWalletError(innerErr)) {
                 return "0";
             }
             // Log other errors
@@ -36,6 +48,9 @@ export async function getJettonBalance(
             return "0";
         }
     } catch (err: any) {
+        if (isUninitializedJettonWalletError(err)) {
+            return "0";
+        }
         // Error mounting or opening wallet
         console.error('[JettonBalance] Error opening wallet:', {
             tokenAddress: jettonMaster?.toString?.() || jettonMaster,

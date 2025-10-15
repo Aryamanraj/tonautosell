@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "nodemon src/auto-seller.ts",
-    "start": "ts-node src/auto-seller.ts"
+    "start": "ts-node src/auto-seller.ts",
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "@hiruyaken",
@@ -33,6 +34,7 @@
     "@types/prompt-sync": "^4.2.3",
     "nodemon": "^3.0.3",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.0"
   }
 }
