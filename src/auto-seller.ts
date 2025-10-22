@@ -12,16 +12,17 @@ dotenv.config();
 const {
     WATCH_WALLET_MNEMONIC,
     JETTON_ADDRESS,
-    WALLET_A,
-    WALLET_B,
+    WALLET_PEP_FEE_COLLECTOR,
+    WALLET_CAPSTR_FEE_COLLECTOR,
+    WALLET_TEAM,
     TON_RPC_ENDPOINT = "https://toncenter.com/api/v2/jsonRPC",
     TON_API_KEY,
     POLL_INTERVAL_MS = "5000"
 } = process.env;
 
-if (!WATCH_WALLET_MNEMONIC || !JETTON_ADDRESS || !WALLET_A || !WALLET_B) {
+if (!WATCH_WALLET_MNEMONIC || !JETTON_ADDRESS || !WALLET_PEP_FEE_COLLECTOR || !WALLET_CAPSTR_FEE_COLLECTOR || !WALLET_TEAM) {
     console.error("❌ Missing environment variables in .env:");
-    console.error("Provide WATCH_WALLET_MNEMONIC plus JETTON_ADDRESS, WALLET_A, WALLET_B");
+    console.error("Provide WATCH_WALLET_MNEMONIC, JETTON_ADDRESS, WALLET_PEP_FEE_COLLECTOR, WALLET_CAPSTR_FEE_COLLECTOR, WALLET_TEAM");
     process.exit(1);
 }
 
@@ -30,8 +31,9 @@ class JettonAutoSeller {
     private watchWallet: WalletContractV5R1;
     private keyPair: KeyPair;
     private jettonAddress: Address;
-    private walletA: Address;
-    private walletB: Address;
+    private walletPepeCollector: Address;
+    private walletCapstrCollector: Address;
+    private walletTeam: Address;
     private lastBalance: string = "0";
     private isProcessing: boolean = false;
     private pollInterval: number;
@@ -43,8 +45,9 @@ class JettonAutoSeller {
         });
 
         this.jettonAddress = Address.parse(JETTON_ADDRESS!);
-        this.walletA = Address.parse(WALLET_A!);
-        this.walletB = Address.parse(WALLET_B!);
+        this.walletPepeCollector = Address.parse(WALLET_PEP_FEE_COLLECTOR!);
+        this.walletCapstrCollector = Address.parse(WALLET_CAPSTR_FEE_COLLECTOR!);
+        this.walletTeam = Address.parse(WALLET_TEAM!);
         this.pollInterval = parseInt(POLL_INTERVAL_MS!);
     }
 
@@ -85,8 +88,9 @@ class JettonAutoSeller {
         console.log("🤖 Auto detector started!");
         console.log(`📍 Monitoring wallet: ${this.watchWallet.address.toString()}`);
         console.log(`🪙 Target token: ${this.jettonAddress.toString()}`);
-        console.log(`💰 Distribution: 80% → ${this.walletA.toString()}`);
-        console.log(`💰 Distribution: 20% → ${this.walletB.toString()}`);
+    console.log(`💰 Distribution: 80% → ${this.walletPepeCollector.toString()} (Pepe fee collector)`);
+    console.log(`💰 Distribution: 10% → ${this.walletCapstrCollector.toString()} ($CAPSTR fee collector)`);
+    console.log(`💰 Distribution: 10% → ${this.walletTeam.toString()} (Team)`);
         console.log(`⏱️  Interval: ${this.pollInterval}ms`);
         console.log("🔍 Waiting for jettons...");
 
@@ -239,33 +243,52 @@ class JettonAutoSeller {
             }
 
             // Calculate distribution
-            const toWalletA = (availableAmount * BigInt(80)) / BigInt(100);
-            const toWalletB = availableAmount - toWalletA;
-
             console.log("🏦 Retaining 1 TON in the watch wallet");
             console.log("💸 Reserving 0.1 TON for future fees");
-            console.log(`📤 Sending ${Number(toWalletA) / 1e9} TON to Wallet A`);
-            console.log(`📤 Sending ${Number(toWalletB) / 1e9} TON to Wallet B`);
+
+            const recipients = [
+                {
+                    label: "Pepe fee collector",
+                    share: BigInt(80),
+                    address: this.walletPepeCollector
+                },
+                {
+                    label: "$CAPSTR fee collector",
+                    share: BigInt(10),
+                    address: this.walletCapstrCollector
+                },
+                {
+                    label: "Team",
+                    share: BigInt(10),
+                    address: this.walletTeam
+                }
+            ];
+
+            let distributed = BigInt(0);
+            const distributions = recipients.map((recipient, index) => {
+                let value: bigint;
+                if (index === recipients.length - 1) {
+                    value = availableAmount - distributed;
+                } else {
+                    value = (availableAmount * recipient.share) / BigInt(100);
+                    distributed += value;
+                }
+                console.log(`📤 Sending ${Number(value) / 1e9} TON to ${recipient.label}`);
+                return internal({
+                    to: recipient.address,
+                    value,
+                    bounce: false
+                });
+            });
 
             const wallet = this.tonClient.open(this.watchWallet);
             const seqno = await wallet.getSeqno();
-            // Send both transactions
+
             await wallet.sendTransfer({
                 seqno: seqno,
                 secretKey: this.keyPair.secretKey,
                 sendMode: SendMode.PAY_GAS_SEPARATELY,
-                messages: [
-                    internal({
-                        to: this.walletA,
-                        value: toWalletA,
-                        bounce: false
-                    }),
-                    internal({
-                        to: this.walletB,
-                        value: toWalletB,
-                        bounce: false
-                    })
-                ]
+                messages: distributions
             });
 
             console.log("✅ Distribution sent!");
