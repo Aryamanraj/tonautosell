@@ -18,10 +18,6 @@ describe("JettonAutoSeller distributeTons", () => {
             workchain: 0,
             publicKey: Buffer.alloc(32, 5)
         });
-        const jettonAddress = WalletContractV5R1.create({
-            workchain: 0,
-            publicKey: Buffer.alloc(32, 6)
-        }).address.toString();
         const walletPepe = WalletContractV5R1.create({
             workchain: 0,
             publicKey: Buffer.alloc(32, 7)
@@ -39,8 +35,7 @@ describe("JettonAutoSeller distributeTons", () => {
         walletCapstrAddress = walletCapstr.address.toString();
         walletTeamAddress = walletTeam.address.toString();
 
-        process.env.WATCH_WALLET_MNEMONIC = TEST_MNEMONIC;
-        process.env.JETTON_ADDRESS = jettonAddress;
+    process.env.WATCH_WALLET_MNEMONIC = TEST_MNEMONIC;
         process.env.WALLET_PEP_FEE_COLLECTOR = walletPepeAddress;
         process.env.WALLET_CAPSTR_FEE_COLLECTOR = walletCapstrAddress;
         process.env.WALLET_TEAM = walletTeamAddress;
@@ -67,7 +62,9 @@ describe("JettonAutoSeller distributeTons", () => {
     it("reserves 1.1 TON and distributes the rest 80/10/10", async () => {
         const totalBalance = toNano("5");
 
-        await (seller as any).distributeTons(totalBalance);
+    const result = await (seller as any).distributeTons(totalBalance);
+
+    expect(result).toBe(true);
 
         expect(fakeTonClient.open).toHaveBeenCalledWith((seller as any).watchWallet);
         expect(fakeWallet.getSeqno).toHaveBeenCalledTimes(1);
@@ -90,8 +87,9 @@ describe("JettonAutoSeller distributeTons", () => {
     it("skips distribution when balance is at or below reserve", async () => {
         const belowReserve = toNano("1.05");
 
-        await (seller as any).distributeTons(belowReserve);
+    const result = await (seller as any).distributeTons(belowReserve);
 
+    expect(result).toBe(false);
         expect(fakeWallet.sendTransfer).not.toHaveBeenCalled();
     });
 });

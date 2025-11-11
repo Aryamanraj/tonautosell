@@ -1,14 +1,14 @@
-# 🤖 Jetton Auto-Seller for TON Blockchain
+# 🤖 TON Distribution Monitor
 
-An automated system that detects when jettons (tokens) are received in a monitored wallet, executes instant sales on DeDust DEX, and automatically distributes the resulting TON to two predefined wallets.
+An automated system that watches a TON wallet, detects balance increases, and distributes the fresh TON across three configured fee collectors while keeping a safety reserve in the source wallet.
 
 ## 🎯 Core Features
 
-1. **Continuous Monitoring**: Checks every 5 seconds for new jettons received
-2. **Automatic Selling**: Instantly sells ALL detected jettons on DeDust DEX
-3. **Automatic Distribution**: Leaves 1 TON in the source wallet and sends the remainder (80% to Wallet A, 20% to Wallet B)
-4. **Error Handling**: Robust error handling with detailed logging
-5. **Transaction Batching**: Sends both distributions in a single transaction for efficiency
+1. **Continuous Monitoring**: Checks every few seconds (configurable) for increases in TON balance
+2. **Automatic Distribution**: Leaves 1.1 TON in the watch wallet (1 TON float + 0.1 TON gas) and sends the remainder (80% / 10% / 10%)
+3. **Triple Payouts**: Supports Pepe fee collector, $CAPSTR fee collector, and team destinations
+4. **Error Handling**: Robust logging and automatic retry on failures
+5. **Transaction Batching**: Sends all payouts in one batched transfer to save fees
 
 ## ⚙️ Setup
 
@@ -26,12 +26,10 @@ cp .env.example .env
 # Monitored wallet credentials - provide the 24-word mnemonic for the watch wallet
 WATCH_WALLET_MNEMONIC=word1 word2 word3 ... word24
 
-# Jetton contract address to detect
-JETTON_ADDRESS=EQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# Distribution wallets
-WALLET_A=EQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Receives 80%
-WALLET_B=EQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Receives 20%
+# Distribution wallets (used for TON payouts)
+WALLET_PEP_FEE_COLLECTOR=EQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   # Receives 80%
+WALLET_CAPSTR_FEE_COLLECTOR=EQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Receives 10%
+WALLET_TEAM=EQxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Receives 10%
 ```
 
 **Optional Variables:**
@@ -45,10 +43,6 @@ TON_API_KEY=your_api_key_here
 
 # Polling interval in milliseconds (default: 5000)
 POLL_INTERVAL_MS=5000
-
-# Demo script configuration (used by src/demo.ts)
-TESTNET_DEMO_DEST=EQtestnetAddressGoesHere
-DEMO_TRANSFER_AMOUNT=0.001
 ```
 
 ### 2. Install Dependencies
@@ -104,32 +98,23 @@ Press `Ctrl+C` in the terminal. The bot will gracefully finish any ongoing opera
 
 ```mermaid
 graph TD
-    A[Monitor Wallet] -->|Every 5s| B{New Jettons?}
-    B -->|No| A
-    B -->|Yes| C[Log: Jettons Detected]
-    C --> D[Setup DeDust Pool]
-    E --> F[Sell ALL Jettons]
-    F --> G[Wait 20s for Confirmation]
-    G --> H[Check TON Received]
-    H --> I{TON > 0?}
-    M --> N[Log: Process Complete]
-    N --> A
+   A[Monitor Wallet] -->|Every poll interval| B{TON balance increased?}
+   B -->|No| A
+   B -->|Yes| C[Log deposit details]
+   C --> D[Calculate available after 1.1 TON reserve]
+   D --> E[Prepare 80/10/10 payouts]
+   E --> F[Send batched transfers]
+   F --> G[Log completion]
+   G --> A
 
 ### Smart Detection
-- Compares current balance vs. previous balance
-- Detects any increase in jetton balance
-- Processes only when new jettons are received
-- Prevents duplicate processing with locking mechanism
-
-### Optimized Selling
-- Sells 100% of available jettons
-- Uses DeDust Protocol for liquidity
-- Implements proper swap payload with VaultJetton
-- Waits for blockchain confirmation before proceeding
+- Compares current and previous TON balances
+- Processes only when the balance grows
+- Locks processing to prevent duplicate runs
 
 ### Safe Distribution
 - Reserves 1 TON in the watch wallet plus 0.1 TON for transaction fees
-- Sends both distributions in a single batched transaction
+- Sends all three distributions in a single batched transaction
 - Validates amounts before sending
 - Uses non-bounceable addresses for safety
 
@@ -143,35 +128,29 @@ graph TD
 
 ```
 ✅ Wallet initialized: EQAbc...123
-📊 Initial jetton balance: 0
-🤖 Auto detector started!
+📊 Initial TON balance: 1.10 TON
+🤖 TON monitor started!
 📍 Monitoring wallet: EQAbc...123
-🪙 Target token: EQDef...456
-💰 Distribution: 80% → EQGhi...789
-💰 Distribution: 20% → EQJkl...012
+💰 Distribution: 80% → EQGhi...789 (Pepe fee collector)
+💰 Distribution: 10% → EQJkl...012 ($CAPSTR fee collector)
+💰 Distribution: 10% → EQMno...345 (Team)
 ⏱️  Interval: 5000ms
-🔍 Waiting for jettons...
+🔍 Waiting for TON deposits...
 
-🎉 JETTON DETECTED!
-📊 Received amount: 1000000000000
-📊 Total balance: 1000000000000
-🚀 Starting automatic sale...
-💰 TON balance before: 0.5 TON
-🏪 Selling 1000000000000 jettons...
-✅ Sale sent!
-⏳ Processing sale...
-💰 TON balance after: 2.3 TON  
-💸 TON obtained: 1.8 TON
+🎉 TON deposit detected!
+📊 Received amount: 0.80 TON
+📊 Total balance: 1.90 TON
 
-� Starting TON distribution...
-�💰 Distributing 0.7 TON after retaining 1 TON and fees...
+ ------------------- DISTRIBUTION ------------------
+💰 Current wallet balance: 1.9 TON
 🏦 Retaining 1 TON in the watch wallet
-📤 Sending 0.56 TON to Wallet A
-📤 Sending 0.14 TON to Wallet B
+� Reserving 0.1 TON for future fees
+📤 Sending 0.64 TON to Pepe fee collector
+📤 Sending 0.08 TON to $CAPSTR fee collector
+📤 Sending 0.08 TON to Team
 ✅ Distribution sent!
-✅ Process completed!
 
-🔍 Waiting for jettons...
+🔍 Waiting for TON deposits...
 ```
 
 ## ⚠️ Important Considerations
@@ -182,20 +161,20 @@ graph TD
 - Test thoroughly on testnet before mainnet
 - Keep your `.env` file secure and excluded from version control
 
-### Liquidity
-- Ensure the target token has sufficient liquidity on DeDust
-- Low liquidity tokens may result in failed swaps or high slippage
-- Verify pool exists before running the bot
+### Liquidity / Swaps
+- Swapping is handled on-chain outside of this bot
+- Ensure upstream contracts reliably deliver TON to the watch wallet
+- Pause the bot while deploying or modifying swap logic
 
 ### Transaction Fees
-- Each operation consumes TON in fees (~0.05-0.15 TON total per cycle)
-- Keep minimum 0.3 TON balance in monitored wallet
-- Bot reserves 1 TON in the watch wallet and 0.1 TON for future fees
+- Each distribution batch consumes ~0.05-0.15 TON in network fees
+- Maintain at least 1.1 TON in the watch wallet to cover reserve + gas
+- The script automatically withholds 1 TON (float) + 0.1 TON (gas buffer)
 
 ### Timing Considerations
-- 20-second wait after sale ensures blockchain confirmation
-- May need adjustment for highly volatile tokens
-- Polling interval can be customized via `POLL_INTERVAL_MS`
+- Poll interval is configurable via `POLL_INTERVAL_MS`
+- Choose an interval that balances responsiveness and RPC usage
+- On each poll the script re-checks the reserve balance before distributing
 
 ### Network Reliability
 - Uses TonCenter RPC by default
@@ -227,50 +206,27 @@ POLL_INTERVAL_MS=3000
 POLL_INTERVAL_MS=10000
 ```
 
-### Adjust Fee Reserve
-
-### Change Wait Time After Sale
-Edit `src/auto-seller.ts` around line 157:
-
-// Current: waits 20 seconds
-await sleep(20);
-
-// Example: wait 30 seconds
-await sleep(30);
-```
-
 ## 🛠️ Troubleshooting
 
 ### "Missing environment variables"
 **Cause:** Required `.env` variables not set  
-**Solution:** Ensure `WATCH_WALLET_MNEMONIC`, `JETTON_ADDRESS`, `WALLET_A`, and `WALLET_B` are configured
+**Solution:** Ensure `WATCH_WALLET_MNEMONIC`, `WALLET_PEP_FEE_COLLECTOR`, `WALLET_CAPSTR_FEE_COLLECTOR`, and `WALLET_TEAM` are configured
 
 ### "Insufficient amount to distribute after fees"
-**Cause:** Not enough TON received or wallet balance too low  
-**Solution:** Ensure wallet has minimum 0.3 TON balance and token has good liquidity
+**Cause:** Deposit amount smaller than the 1.1 TON reserve threshold  
+**Solution:** Ensure upstream swaps deliver more than 1.1 TON to the watch wallet
 
 ### "Error opening wallet" or "Error querying balance"
-**Cause:** Invalid jetton address or wallet not initialized  
-**Solution:** Verify `JETTON_ADDRESS` is correct and wallet address is valid
+**Cause:** Invalid mnemonic, wrong workchain, or RPC connectivity issues  
+**Solution:** Re-check the 24-word mnemonic, verify RPC endpoint/API key, and confirm the wallet exists on-chain
 
-### "Unable to execute get method. Got exit_code: 11"
-**Cause:** Jetton contract address incorrect or pool doesn't exist  
-**Solution:** Double-check jetton address and verify DeDust pool exists for this token
-
-### Pool Not Found
-**Cause:** Token doesn't have liquidity on DeDust  
-**Solution:** Verify token is listed on DeDust with active liquidity pool
-
-### Transaction Failed
-**Cause:** Network issues, insufficient fees, or low liquidity  
-**Solution:** 
-- Check wallet has enough TON for fees
-- Verify network connectivity
-- Bot will automatically retry on next detection
+### No distributions occurring
+**Cause:** Wallet already at reserve level or deposits routed elsewhere  
+**Solution:** Confirm recent deposits on TonScan and ensure the watch wallet is the swap payout destination
 
 ### Process Seems Stuck
-**Cause:** Blockchain confirmation delay  
-**Solution:** Wait for the 20-second processing period to complete. Check TonScan for transaction status.
+**Cause:** No new TON since the previous poll  
+**Solution:** Verify upstream swaps are executing, lower the poll interval, or restart the bot after confirming RPC health
 
 ## 📁 Project Structure
 
@@ -294,8 +250,8 @@ script_swap/
 
 The system provides comprehensive logging:
 
-- ✅ Successful operations (wallet initialization, sales, distributions)
-- 🎉 Event detection (new jettons received)
+- ✅ Successful operations (wallet initialization, distributions)
+- 🎉 Event detection (new TON received)
 - 💰 Balance changes (before/after, amounts)
 - 📤 Transaction details (amounts, destinations, sequence numbers)
 - ⚠️ Warnings (insufficient balance, no TON detected)
@@ -324,13 +280,12 @@ The system provides comprehensive logging:
    - Monitor wallet balances
    - Set up alerts for failures (optional)
 
-## � Performance Characteristics
+## ⚙️ Performance Characteristics
 
 - **Detection Latency**: 0-5 seconds (configurable)
-- **Sale Execution**: ~3-5 seconds (blockchain dependent)
-- **Confirmation Wait**: 20 seconds (configurable)
-- **Distribution**: ~2-3 seconds (single transaction)
-- **Total Cycle**: ~25-35 seconds from detection to completion
+- **Distribution**: ~2-3 seconds for the batched transfer
+- **Reserve Check**: Executed on every poll before sending
+- **Total Cycle**: Typically under 10 seconds from deposit to payout
 
 ## 🔄 Dependencies
 
@@ -362,11 +317,9 @@ For issues, questions, or contributions:
 
 - [ ] Copy `.env.example` to `.env`
 - [ ] Add your wallet mnemonic (24 words)
-- [ ] Configure jetton address to monitor
-- [ ] Set destination wallets A and B
+- [ ] Configure payout wallets (`WALLET_PEP_FEE_COLLECTOR`, `WALLET_CAPSTR_FEE_COLLECTOR`, `WALLET_TEAM`)
 - [ ] Run `npm install` or `yarn install`
-- [ ] Ensure monitored wallet has 0.3+ TON balance
-- [ ] Verify jetton has DeDust liquidity pool
+- [ ] Ensure monitored wallet maintains at least 1.1 TON reserve
 - [ ] Run `npm start` or `yarn start`
 - [ ] Monitor console output for detection
 - [ ] Test with small amount first
