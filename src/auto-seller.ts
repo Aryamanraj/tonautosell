@@ -202,7 +202,8 @@ class JettonAutoSeller {
                 seqno,
                 secretKey: this.keyPair.secretKey,
                 sendMode: SendMode.PAY_GAS_SEPARATELY,
-                messages
+                messages,
+                timeout: Math.floor(Date.now() / 1000) + 300 // keep message valid for 5 minutes
             });
 
             console.log("✅ Distribution sent!");
